@@ -29,7 +29,7 @@ def fetch_html(url):
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=False)
+            browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
             context = browser.new_context(
                 java_script_enabled=True,
                 ignore_https_errors=True,
@@ -43,8 +43,8 @@ def fetch_html(url):
 
             page.on("console", lambda msg: print(f"[Console] {msg.type}: {msg.text}"))
 
-            page.goto(url, wait_until="load")
-            # page.wait_for_timeout(7000)
+            page.goto(url, wait_until="networkidle")
+            page.wait_for_timeout(8000)
 
             # 🧠 Re-evaluate inline scripts manually
             page.evaluate("""
