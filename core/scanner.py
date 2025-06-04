@@ -388,318 +388,328 @@ def run_accessibility_scan(url):
 #         return {"summary": summary, "details": all_results}, final_html, scan_id
 
 
-# def run_accessibility_scan_with_dom_capture(url):
-#     with sync_playwright() as p:
-#         browser = p.chromium.launch(headless=True)
-#         context = browser.new_context()
-#         page = context.new_page()
-#         page.goto(url, wait_until="load")
-#
-#         # Grab JS-rendered DOM
-#         final_html = page.evaluate("document.documentElement.outerHTML")
-#         soup = BeautifulSoup(final_html, 'html.parser')
-#
-#         # Run static accessibility checks
-#         static_results = (
-#             check_alt_text(soup) +
-#             check_unordered_list_structure(soup) +
-#             check_color_contrast(soup)
-#         )
-#
-#         # Inject data-issue markers
-#         for issue in static_results:
-#             try:
-#                 html_str = issue["element"]
-#                 issue_id = issue["type"].lower().replace(" ", "-")
-#                 match = soup.find(lambda tag: str(tag).strip() == html_str.strip())
-#                 if match:
-#                     match['data-issue'] = issue_id
-#                     match['class'] = match.get('class', []) + ['access-issue']
-#             except Exception:
-#                 continue
-#
-#         # Inject per-type CSS for highlights
-#         # style_tag = soup.new_tag("style")
-#         highlight_css = """
-#         .access-issue {
-#           outline: 3px dashed #dc3545 !important;
-#           position: relative;
-#         }
-#
-#         .access-issue::after {
-#           content: attr(data-issue);
-#           position: absolute;
-#           font-size: 12px;
-#           padding: 2px 6px;
-#           border-radius: 4px;
-#           top: -10px;
-#           right: 0;
-#           z-index: 9999;
-#           font-family: sans-serif;
-#           white-space: nowrap;
-#           color: #fff;
-#           background-color: #dc3545;
-#         }
-#
-#         /* 🟠 Missing Alt Text */
-#         [data-issue="missing-alt-text"] {
-#           outline-color: red !important;
-#         }
-#         [data-issue="missing-alt-text"]::after {
-#           background-color: red;
-#         }
-#
-#         /* 🔴 Low Color Contrast */
-#         [data-issue="low-color-contrast"] {
-#           outline-color: orange !important;
-#         }
-#         [data-issue="low-color-contrast"]::after {
-#           background-color: orange;
-#         }
-#
-#         /* 🔵 Improper List */
-#         [data-issue="possible-improper-list"] {
-#           outline-color: blue !important;
-#         }
-#         [data-issue="possible-improper-list"]::after {
-#           background-color: blue;
-#         }
-#         """
-#
-#         # # Inject into <head>
-#         # if soup.head:
-#         #     soup.head.append(style_tag)
-#         # else:
-#         #     head_tag = soup.new_tag("head")
-#         #     head_tag.append(style_tag)
-#         #     soup.insert(0, head_tag)
-#
-#         # Finalize HTML
-#         # final_html = str(soup)
-#
-#         page.add_style_tag(content=highlight_css)
-#
-#         # 3. Inject markers for static results via JS
-#         for idx, issue in enumerate(static_results):
-#             issue_id = issue["type"].lower().replace(" ", "-")
-#
-#             # Parse element snippet with BeautifulSoup to find key attrs
-#             snippet_soup = BeautifulSoup(issue["element"], 'html.parser')
-#             el = snippet_soup.find()  # get first tag
-#
-#             if not el:
-#                 continue
-#
-#             # Build JS selector string, e.g., for img by src
-#             if el.name == 'img' and el.has_attr('src'):
-#                 src = el['src'].replace('"', '\\"')
-#                 js = f"""
-#                 (() => {{
-#                     const matches = Array.from(document.querySelectorAll('img[src="{src}"]'));
-#                     matches.forEach(el => {{
-#                         el.setAttribute('data-issue', '{issue_id}');
-#                         el.classList.add('access-issue');
-#                     }});
-#                 }})();
-#                 """
-#             else:
-#                 # fallback: try to find by tag + text content
-#                 text = el.get_text().strip().replace('"', '\\"')
-#                 tag = el.name
-#                 js = f"""
-#                 (() => {{
-#                     const matches = Array.from(document.querySelectorAll('{tag}')).filter(el => el.textContent.trim() === "{text}");
-#                     matches.forEach(el => {{
-#                         el.setAttribute('data-issue', '{issue_id}');
-#                         el.classList.add('access-issue');
-#                     }});
-#                 }})();
-#                 """
-#
-#             try:
-#                 page.evaluate(js)
-#             except Exception as e:
-#                 print(f"Failed to inject marker for issue {idx}: {e}")
-#
-#         # Get the updated DOM after JS execution
-#         final_html = page.evaluate("document.documentElement.outerHTML")
-#
-#         # Fix broken CSS and script paths to absolute URLs
-#         soup = BeautifulSoup(final_html, 'html.parser')
-#         for tag in soup.find_all(['link', 'script', 'img']):
-#             attr = 'href' if tag.name == 'link' else 'src'
-#             if tag.has_attr(attr):
-#                 tag[attr] = urljoin(url, tag[attr])
-#         final_html = str(soup)
-#
-#         # Attach rule metadata
-#         for issue in static_results:
-#             metadata = RULE_METADATA.get(issue["type"])
-#             if metadata:
-#                 issue["why"] = metadata["why"]
-#                 issue["wcag"] = metadata["wcag"]
-#
-#         # Build summary
-#         all_results = static_results
-#         by_type = {}
-#         for r in all_results:
-#             key = r['type']
-#             by_type[key] = by_type.get(key, 0) + 1
-#
-#         summary = {
-#             'total_issues': len(all_results),
-#             'by_type': by_type,
-#             'total_structural': len(soup.find_all(['header', 'footer', 'nav', 'section', 'article', 'ul', 'li'])),
-#             'total_aria': len(soup.find_all(attrs={"aria-label": True}))
-#         }
-#
-#         browser.close()
-#         scan_id = str(uuid.uuid4())
-#
-#         return {"summary": summary, "details": all_results}, final_html, scan_id
-logger = logging.getLogger(__name__)
-
 def run_accessibility_scan_with_dom_capture(url):
-    logger.info("📥 [1] Starting accessibility scan for URL: %s", url)
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless = True,
+        args = [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-extensions",
+            "--disable-gpu",
+            "--disable-software-rasterizer",
+            "--disable-web-security"
+        ])
 
-    try:
-        with sync_playwright() as p:
-            logger.info("🚀 [2] Launching Chromium")
-            browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
-            context = browser.new_context()
-            page = context.new_page()
+        context = browser.new_context()
+        page = context.new_page()
+        page.goto(url, wait_until="load")
 
-            logger.info("🌐 [3] Navigating to URL with network idle wait...")
-            page.goto(url, wait_until="load", timeout=30000)
+        # Grab JS-rendered DOM
+        final_html = page.evaluate("document.documentElement.outerHTML")
+        soup = BeautifulSoup(final_html, 'html.parser')
 
-            logger.info("📄 [4] Extracting JS-rendered DOM")
-            final_html = page.evaluate("document.documentElement.outerHTML")
-            soup = BeautifulSoup(final_html, 'html.parser')
+        # Run static accessibility checks
+        static_results = (
+            check_alt_text(soup) +
+            check_unordered_list_structure(soup) +
+            check_color_contrast(soup)
+        )
 
-            logger.info("🧪 [5] Running static accessibility checks")
-            static_results = (
-                check_alt_text(soup) +
-                check_unordered_list_structure(soup) +
-                check_color_contrast(soup)
-            )
-
-            logger.info("🖍️ [6] Injecting data-issue markers into DOM")
-            for issue in static_results:
-                try:
-                    html_str = issue["element"]
-                    issue_id = issue["type"].lower().replace(" ", "-")
-                    match = soup.find(lambda tag: str(tag).strip() == html_str.strip())
-                    if match:
-                        match['data-issue'] = issue_id
-                        match['class'] = match.get('class', []) + ['access-issue']
-                except Exception as e:
-                    logger.warning("⚠️ Failed to inject data-issue marker: %s", e)
-
-            logger.info("🎨 [7] Injecting highlight CSS")
-            highlight_css = """
-            .access-issue {
-              outline: 3px dashed #dc3545 !important;
-              position: relative;
-            }
-            .access-issue::after {
-              content: attr(data-issue);
-              position: absolute;
-              font-size: 12px;
-              padding: 2px 6px;
-              border-radius: 4px;
-              top: -10px;
-              right: 0;
-              z-index: 9999;
-              font-family: sans-serif;
-              white-space: nowrap;
-              color: #fff;
-              background-color: #dc3545;
-            }
-            [data-issue="missing-alt-text"] { outline-color: red !important; }
-            [data-issue="missing-alt-text"]::after { background-color: red; }
-            [data-issue="low-color-contrast"] { outline-color: orange !important; }
-            [data-issue="low-color-contrast"]::after { background-color: orange; }
-            [data-issue="possible-improper-list"] { outline-color: blue !important; }
-            [data-issue="possible-improper-list"]::after { background-color: blue; }
-            """
-            page.add_style_tag(content=highlight_css)
-
-            logger.info("🧠 [8] Injecting JS-based markers")
-            for idx, issue in enumerate(static_results):
+        # Inject data-issue markers
+        for issue in static_results:
+            try:
+                html_str = issue["element"]
                 issue_id = issue["type"].lower().replace(" ", "-")
-                snippet_soup = BeautifulSoup(issue["element"], 'html.parser')
-                el = snippet_soup.find()
-                if not el:
-                    continue
+                match = soup.find(lambda tag: str(tag).strip() == html_str.strip())
+                if match:
+                    match['data-issue'] = issue_id
+                    match['class'] = match.get('class', []) + ['access-issue']
+            except Exception:
+                continue
 
-                try:
-                    if el.name == 'img' and el.has_attr('src'):
-                        src = el['src'].replace('"', '\\"')
-                        js = f"""
-                        (() => {{
-                            const matches = Array.from(document.querySelectorAll('img[src="{src}"]'));
-                            matches.forEach(el => {{
-                                el.setAttribute('data-issue', '{issue_id}');
-                                el.classList.add('access-issue');
-                            }});
-                        }})();
-                        """
-                    else:
-                        text = el.get_text().strip().replace('"', '\\"')
-                        tag = el.name
-                        js = f"""
-                        (() => {{
-                            const matches = Array.from(document.querySelectorAll('{tag}')).filter(el => el.textContent.trim() === "{text}");
-                            matches.forEach(el => {{
-                                el.setAttribute('data-issue', '{issue_id}');
-                                el.classList.add('access-issue');
-                            }});
-                        }})();
-                        """
-                    page.evaluate(js)
-                except Exception as e:
-                    logger.warning("⚠️ Failed to inject JS marker for issue %d: %s", idx, e)
+        # Inject per-type CSS for highlights
+        # style_tag = soup.new_tag("style")
+        highlight_css = """
+        .access-issue {
+          outline: 3px dashed #dc3545 !important;
+          position: relative;
+        }
 
-            logger.info("📦 [9] Re-evaluating updated HTML after JS injection")
-            final_html = page.evaluate("document.documentElement.outerHTML")
+        .access-issue::after {
+          content: attr(data-issue);
+          position: absolute;
+          font-size: 12px;
+          padding: 2px 6px;
+          border-radius: 4px;
+          top: -10px;
+          right: 0;
+          z-index: 9999;
+          font-family: sans-serif;
+          white-space: nowrap;
+          color: #fff;
+          background-color: #dc3545;
+        }
 
-            logger.info("🔗 [10] Fixing static asset paths")
-            soup = BeautifulSoup(final_html, 'html.parser')
-            for tag in soup.find_all(['link', 'script', 'img']):
-                attr = 'href' if tag.name == 'link' else 'src'
-                if tag.has_attr(attr):
-                    tag[attr] = urljoin(url, tag[attr])
-            final_html = str(soup)
+        /* 🟠 Missing Alt Text */
+        [data-issue="missing-alt-text"] {
+          outline-color: red !important;
+        }
+        [data-issue="missing-alt-text"]::after {
+          background-color: red;
+        }
 
-            logger.info("📚 [11] Attaching metadata to issues")
-            for issue in static_results:
-                metadata = RULE_METADATA.get(issue["type"])
-                if metadata:
-                    issue["why"] = metadata["why"]
-                    issue["wcag"] = metadata["wcag"]
+        /* 🔴 Low Color Contrast */
+        [data-issue="low-color-contrast"] {
+          outline-color: orange !important;
+        }
+        [data-issue="low-color-contrast"]::after {
+          background-color: orange;
+        }
 
-            logger.info("📊 [12] Building summary")
-            by_type = {}
-            for r in static_results:
-                key = r['type']
-                by_type[key] = by_type.get(key, 0) + 1
+        /* 🔵 Improper List */
+        [data-issue="possible-improper-list"] {
+          outline-color: blue !important;
+        }
+        [data-issue="possible-improper-list"]::after {
+          background-color: blue;
+        }
+        """
 
-            summary = {
-                'total_issues': len(static_results),
-                'by_type': by_type,
-                'total_structural': len(soup.find_all(['header', 'footer', 'nav', 'section', 'article', 'ul', 'li'])),
-                'total_aria': len(soup.find_all(attrs={"aria-label": True}))
-            }
+        # # Inject into <head>
+        # if soup.head:
+        #     soup.head.append(style_tag)
+        # else:
+        #     head_tag = soup.new_tag("head")
+        #     head_tag.append(style_tag)
+        #     soup.insert(0, head_tag)
 
-            browser.close()
-            scan_id = str(uuid.uuid4())
+        # Finalize HTML
+        # final_html = str(soup)
 
-            logger.info("✅ [13] Accessibility scan complete: %s", scan_id)
-            return {"summary": summary, "details": static_results}, final_html, scan_id
+        page.add_style_tag(content=highlight_css)
 
-    except Exception as e:
-        logger.error("💥 [CRITICAL] Unhandled exception during scan: %s", e)
-        return {"summary": {}, "details": []}, "", "failed"
+        # 3. Inject markers for static results via JS
+        for idx, issue in enumerate(static_results):
+            issue_id = issue["type"].lower().replace(" ", "-")
+
+            # Parse element snippet with BeautifulSoup to find key attrs
+            snippet_soup = BeautifulSoup(issue["element"], 'html.parser')
+            el = snippet_soup.find()  # get first tag
+
+            if not el:
+                continue
+
+            # Build JS selector string, e.g., for img by src
+            if el.name == 'img' and el.has_attr('src'):
+                src = el['src'].replace('"', '\\"')
+                js = f"""
+                (() => {{
+                    const matches = Array.from(document.querySelectorAll('img[src="{src}"]'));
+                    matches.forEach(el => {{
+                        el.setAttribute('data-issue', '{issue_id}');
+                        el.classList.add('access-issue');
+                    }});
+                }})();
+                """
+            else:
+                # fallback: try to find by tag + text content
+                text = el.get_text().strip().replace('"', '\\"')
+                tag = el.name
+                js = f"""
+                (() => {{
+                    const matches = Array.from(document.querySelectorAll('{tag}')).filter(el => el.textContent.trim() === "{text}");
+                    matches.forEach(el => {{
+                        el.setAttribute('data-issue', '{issue_id}');
+                        el.classList.add('access-issue');
+                    }});
+                }})();
+                """
+
+            try:
+                page.evaluate(js)
+            except Exception as e:
+                print(f"Failed to inject marker for issue {idx}: {e}")
+
+        # Get the updated DOM after JS execution
+        final_html = page.evaluate("document.documentElement.outerHTML")
+
+        # Fix broken CSS and script paths to absolute URLs
+        soup = BeautifulSoup(final_html, 'html.parser')
+        for tag in soup.find_all(['link', 'script', 'img']):
+            attr = 'href' if tag.name == 'link' else 'src'
+            if tag.has_attr(attr):
+                tag[attr] = urljoin(url, tag[attr])
+        final_html = str(soup)
+
+        # Attach rule metadata
+        for issue in static_results:
+            metadata = RULE_METADATA.get(issue["type"])
+            if metadata:
+                issue["why"] = metadata["why"]
+                issue["wcag"] = metadata["wcag"]
+
+        # Build summary
+        all_results = static_results
+        by_type = {}
+        for r in all_results:
+            key = r['type']
+            by_type[key] = by_type.get(key, 0) + 1
+
+        summary = {
+            'total_issues': len(all_results),
+            'by_type': by_type,
+            'total_structural': len(soup.find_all(['header', 'footer', 'nav', 'section', 'article', 'ul', 'li'])),
+            'total_aria': len(soup.find_all(attrs={"aria-label": True}))
+        }
+
+        browser.close()
+        scan_id = str(uuid.uuid4())
+
+        return {"summary": summary, "details": all_results}, final_html, scan_id
+# logger = logging.getLogger(__name__)
+
+# def run_accessibility_scan_with_dom_capture(url):
+#     logger.info("📥 [1] Starting accessibility scan for URL: %s", url)
+#
+#     try:
+#         with sync_playwright() as p:
+#             logger.info("🚀 [2] Launching Chromium")
+#             browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
+#             context = browser.new_context()
+#             page = context.new_page()
+#
+#             logger.info("🌐 [3] Navigating to URL with network idle wait...")
+#             page.goto(url, wait_until="load", timeout=30000)
+#
+#             logger.info("📄 [4] Extracting JS-rendered DOM")
+#             final_html = page.evaluate("document.documentElement.outerHTML")
+#             soup = BeautifulSoup(final_html, 'html.parser')
+#
+#             logger.info("🧪 [5] Running static accessibility checks")
+#             static_results = (
+#                 check_alt_text(soup) +
+#                 check_unordered_list_structure(soup) +
+#                 check_color_contrast(soup)
+#             )
+#
+#             logger.info("🖍️ [6] Injecting data-issue markers into DOM")
+#             for issue in static_results:
+#                 try:
+#                     html_str = issue["element"]
+#                     issue_id = issue["type"].lower().replace(" ", "-")
+#                     match = soup.find(lambda tag: str(tag).strip() == html_str.strip())
+#                     if match:
+#                         match['data-issue'] = issue_id
+#                         match['class'] = match.get('class', []) + ['access-issue']
+#                 except Exception as e:
+#                     logger.warning("⚠️ Failed to inject data-issue marker: %s", e)
+#
+#             logger.info("🎨 [7] Injecting highlight CSS")
+#             highlight_css = """
+#             .access-issue {
+#               outline: 3px dashed #dc3545 !important;
+#               position: relative;
+#             }
+#             .access-issue::after {
+#               content: attr(data-issue);
+#               position: absolute;
+#               font-size: 12px;
+#               padding: 2px 6px;
+#               border-radius: 4px;
+#               top: -10px;
+#               right: 0;
+#               z-index: 9999;
+#               font-family: sans-serif;
+#               white-space: nowrap;
+#               color: #fff;
+#               background-color: #dc3545;
+#             }
+#             [data-issue="missing-alt-text"] { outline-color: red !important; }
+#             [data-issue="missing-alt-text"]::after { background-color: red; }
+#             [data-issue="low-color-contrast"] { outline-color: orange !important; }
+#             [data-issue="low-color-contrast"]::after { background-color: orange; }
+#             [data-issue="possible-improper-list"] { outline-color: blue !important; }
+#             [data-issue="possible-improper-list"]::after { background-color: blue; }
+#             """
+#             page.add_style_tag(content=highlight_css)
+#
+#             logger.info("🧠 [8] Injecting JS-based markers")
+#             for idx, issue in enumerate(static_results):
+#                 issue_id = issue["type"].lower().replace(" ", "-")
+#                 snippet_soup = BeautifulSoup(issue["element"], 'html.parser')
+#                 el = snippet_soup.find()
+#                 if not el:
+#                     continue
+#
+#                 try:
+#                     if el.name == 'img' and el.has_attr('src'):
+#                         src = el['src'].replace('"', '\\"')
+#                         js = f"""
+#                         (() => {{
+#                             const matches = Array.from(document.querySelectorAll('img[src="{src}"]'));
+#                             matches.forEach(el => {{
+#                                 el.setAttribute('data-issue', '{issue_id}');
+#                                 el.classList.add('access-issue');
+#                             }});
+#                         }})();
+#                         """
+#                     else:
+#                         text = el.get_text().strip().replace('"', '\\"')
+#                         tag = el.name
+#                         js = f"""
+#                         (() => {{
+#                             const matches = Array.from(document.querySelectorAll('{tag}')).filter(el => el.textContent.trim() === "{text}");
+#                             matches.forEach(el => {{
+#                                 el.setAttribute('data-issue', '{issue_id}');
+#                                 el.classList.add('access-issue');
+#                             }});
+#                         }})();
+#                         """
+#                     page.evaluate(js)
+#                 except Exception as e:
+#                     logger.warning("⚠️ Failed to inject JS marker for issue %d: %s", idx, e)
+#
+#             logger.info("📦 [9] Re-evaluating updated HTML after JS injection")
+#             final_html = page.evaluate("document.documentElement.outerHTML")
+#
+#             logger.info("🔗 [10] Fixing static asset paths")
+#             soup = BeautifulSoup(final_html, 'html.parser')
+#             for tag in soup.find_all(['link', 'script', 'img']):
+#                 attr = 'href' if tag.name == 'link' else 'src'
+#                 if tag.has_attr(attr):
+#                     tag[attr] = urljoin(url, tag[attr])
+#             final_html = str(soup)
+#
+#             logger.info("📚 [11] Attaching metadata to issues")
+#             for issue in static_results:
+#                 metadata = RULE_METADATA.get(issue["type"])
+#                 if metadata:
+#                     issue["why"] = metadata["why"]
+#                     issue["wcag"] = metadata["wcag"]
+#
+#             logger.info("📊 [12] Building summary")
+#             by_type = {}
+#             for r in static_results:
+#                 key = r['type']
+#                 by_type[key] = by_type.get(key, 0) + 1
+#
+#             summary = {
+#                 'total_issues': len(static_results),
+#                 'by_type': by_type,
+#                 'total_structural': len(soup.find_all(['header', 'footer', 'nav', 'section', 'article', 'ul', 'li'])),
+#                 'total_aria': len(soup.find_all(attrs={"aria-label": True}))
+#             }
+#
+#             browser.close()
+#             scan_id = str(uuid.uuid4())
+#
+#             logger.info("✅ [13] Accessibility scan complete: %s", scan_id)
+#             return {"summary": summary, "details": static_results}, final_html, scan_id
+#
+#     except Exception as e:
+#         logger.error("💥 [CRITICAL] Unhandled exception during scan: %s", e)
+#         return {"summary": {}, "details": []}, "", "failed"
 
 def hex_to_rgb(hex_color):
     hex_color = hex_color.strip().lstrip('#')
