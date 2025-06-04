@@ -1,0 +1,382 @@
+{#{% extends 'core/base.html' %}#}
+{#{% load static %}#}
+{#{% load custom_tags %}#}
+{#{% load custom_filters %}#}
+{##}
+{#{% block content %}#}
+{#<div class="d-flex" style="min-height: 100vh;">#}
+{#    <!-- Sidebar -->#}
+{#    <div class="bg-light border-end p-3" style="width: 300px; position: sticky; top: 0; height: 100vh; overflow-y: auto;">#}
+{#        <h5 class="mb-3">Accessibility Summary</h5>#}
+{#        <div class="d-grid gap-3">#}
+{#            <div class="d-flex justify-content-between">#}
+{#                <span><i class="bi bi-x-circle-fill text-danger me-2"></i>Errors</span>#}
+{#                <span>{{ report.summary.by_type|get_item:"Missing Alt Text" }}</span>#}
+{#            </div>#}
+{#            <div class="d-flex justify-content-between">#}
+{#                <span><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Alerts</span>#}
+{#                <span>{{ report.summary.by_type|get_item:"Possible Improper List" }}</span>#}
+{#            </div>#}
+{#            <div class="d-flex justify-content-between">#}
+{#                <span><i class="bi bi-palette-fill text-primary me-2"></i>Contrast</span>#}
+{#                <span>{{ report.summary.by_type|get_item:"Low Color Contrast" }}</span>#}
+{#            </div>#}
+{#            <div class="d-flex justify-content-between">#}
+{#                <span><i class="bi bi-layers-fill text-secondary me-2"></i>Structural</span>#}
+{#                <span>{{ report.summary.total_structural|default:0 }}</span>#}
+{#            </div>#}
+{#            <div class="d-flex justify-content-between">#}
+{#                <span><i class="bi bi-puzzle-fill text-success me-2"></i>ARIA</span>#}
+{#                <span>{{ report.summary.total_aria|default:0 }}</span>#}
+{#            </div>#}
+{#        </div>#}
+{#        <a class="btn btn-outline-primary mt-4" href="{% url 'export_csv' %}?url={{ url }}">Export CSV</a>#}
+{#        <a class="btn btn-outline-secondary mt-2" href="{% url 'export_pdf' %}?url={{ url }}">Export PDF</a>#}
+{#    </div>#}
+{##}
+{#    <!-- Main Panel -->#}
+{#    <div class="flex-grow-1 p-4">#}
+{#        <h5>Website Preview</h5>#}
+{#        <iframe id="preview-frame"#}
+{#                src="{% url 'render_dom' %}?uid={{ report.scan_id }}"#}
+{#                width="100%" height="800px"#}
+{#                style="border: 1px solid #ccc;"></iframe>#}
+{#        <iframe id="preview-frame"#}
+{#        src="{% url 'render_dom' %}?uid={{ scan_id }}"#}
+{#        width="100%" height="800px"#}
+{#        style="border: 1px solid #ccc;"></iframe>#}
+{##}
+{##}
+{##}
+{##}
+{#        <!-- Tabs -->#}
+{#        <ul class="nav nav-tabs mt-5" id="reportTabs" role="tablist">#}
+{#            <li class="nav-item">#}
+{#                <a class="nav-link active" data-bs-toggle="tab" href="#details" role="tab">Details</a>#}
+{#            </li>#}
+{#            <li class="nav-item">#}
+{#                <a class="nav-link" data-bs-toggle="tab" href="#contrast" role="tab">Contrast</a>#}
+{#            </li>#}
+{#            <li class="nav-item">#}
+{#                <a class="nav-link" data-bs-toggle="tab" href="#order" role="tab">Order</a>#}
+{#            </li>#}
+{#        </ul>#}
+{##}
+{#        <div class="tab-content mt-3">#}
+{#            <div class="tab-pane fade show active" id="details">#}
+{#                <table class="table table-bordered">#}
+{#                    <thead>#}
+{#                        <tr>#}
+{#                            <th>Issue</th>#}
+{#                            <th>Element</th>#}
+{#                            <th>Suggestion</th>#}
+{#                        </tr>#}
+{#                    </thead>#}
+{#                    <tbody>#}
+{#                        {% for item in report.details %}#}
+{#                        <tr>#}
+{#                            <td>{{ item.type }}</td>#}
+{#                            <td><code>{{ item.element|truncatechars:80|safe }}</code></td>#}
+{#                            <td>{{ item.suggestion }}</td>#}
+{#                           <td style="max-width: 300px; white-space: pre-wrap; word-break: break-word;">#}
+{#                                <code>{{ item.element|safe }}</code>#}
+{#                            </td>#}
+{#                            <td style="max-width: 300px; white-space: pre-wrap; word-break: break-word;">#}
+{#                                <pre><code>{{ item.suggestion|escape }}</code></pre>#}
+{#                            </td>#}
+{#                            <td style="max-width: 300px; word-break: break-word;">#}
+{#                                <div style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; font-family: monospace;">#}
+{#                                    {{ item.suggestion|highlight_alt|safe }}#}
+{#                                </div>#}
+{#                            </td>#}
+{##}
+{#                        </tr>#}
+{#                        {% endfor %}#}
+{#                            {% for item in report.details %}#}
+{#                                <tr>#}
+{#                                  <td>{{ item.id }}</td>#}
+{#                                  <td style="max-width: 300px; word-break: break-word;">#}
+{#                                    <code>#}
+{#                                      {% if item.nodes and item.nodes.0.html %}#}
+{#                                        {{ item.nodes.0.html|safe }}#}
+{#                                      {% else %}#}
+{#                                        (no HTML sample)#}
+{#                                      {% endif %}#}
+{#                                    </code>#}
+{#                                  </td>#}
+{#                                  <td style="max-width: 300px;">#}
+{#                                    <div style="white-space: pre-wrap; word-break: break-word; font-family: monospace;">#}
+{#                                      {{ item.help|default:"No suggestion available." }}#}
+{#                                    </div>#}
+{#                                  </td>#}
+{#                                </tr>#}
+{#                            {% endfor %}#}
+{#                    </tbody>#}
+{#                </table>#}
+{#            </div>#}
+{#            <div class="tab-pane fade" id="contrast">#}
+{#                <p>Contrast issues will be grouped and enhanced soon.</p>#}
+{#            </div>#}
+{#            <div class="tab-pane fade" id="order">#}
+{#                <p>Tab/order flow logic will be analyzed here in future updates.</p>#}
+{#            </div>#}
+{#        </div>#}
+{#    </div>#}
+{#</div>#}
+{##}
+{#    <script>#}
+{#        document.addEventListener("DOMContentLoaded", () => {#}
+{#            const iframe = document.getElementById("preview-frame");#}
+{#            iframe.onload = () => {#}
+{#                const doc = iframe.contentDocument || iframe.contentWindow.document;#}
+{##}
+{#                const images = doc.querySelectorAll("img:not([alt])");#}
+{#                images.forEach((img, index) => {#}
+{#                    img.style.border = "3px solid red";#}
+{#                    img.setAttribute("title", "Missing alt text");#}
+{#                    img.setAttribute("data-access-id", `issue-${index + 1}`);#}
+{#                });#}
+{#            };#}
+{#        });#}
+{#    </script>#}
+{#{% endblock %}#}
+{##}
+{#{% extends 'core/base.html' %}#}
+{#{% load static %}#}
+{#{% load custom_tags %}#}
+{#{% load custom_filters %}#}
+{##}
+{#{% block content %}#}
+{#<div class="d-flex" style="min-height: 100vh;">#}
+{#    <!-- Sidebar -->#}
+{#    <div class="bg-light border-end p-3" style="width: 300px; position: sticky; top: 0; height: 100vh; overflow-y: auto;">#}
+{#        <h5 class="mb-3">Accessibility Summary</h5>#}
+{#        <div class="d-grid gap-3">#}
+{#            <div class="d-flex justify-content-between">#}
+{#                <span><i class="bi bi-x-circle-fill text-danger me-2"></i>Missing Alt Text</span>#}
+{#                <span>{{ report.summary.by_type|get_item:"image-alt"|default:0 }}</span>#}
+{#                <span>{{ report.summary.by_type|get_item:"Missing Alt Text"|default:0 }}</span>#}
+{#            </div>#}
+{#            <div class="d-flex justify-content-between">#}
+{#                <span><i class="bi bi-palette-fill text-primary me-2"></i>Color Contrast</span>#}
+{#                <span>{{ report.summary.by_type|get_item:"color-contrast"|default:0 }}</span>#}
+{#                <span>{{ report.summary.by_type|get_item:"Low Color Contrast"|default:0 }}</span>#}
+{##}
+{#            </div>#}
+{#            <div class="d-flex justify-content-between">#}
+{#                <span><i class="bi bi-list-ul text-warning me-2"></i>Unordered List Issues</span>#}
+{#                <span>{{ report.summary.by_type|get_item:"list"|default:0 }}</span>#}
+{#                <span>{{ report.summary.by_type|get_item:"Possible Improper List"|default:0 }}</span>#}
+{#            </div>#}
+{#            <div class="d-flex justify-content-between">#}
+{#                <span><i class="bi bi-layers-fill text-secondary me-2"></i>Structural</span>#}
+{#                <span>{{ report.summary.total_structural|default:0 }}</span>#}
+{#            </div>#}
+{#            <div class="d-flex justify-content-between">#}
+{#                <span><i class="bi bi-puzzle-fill text-success me-2"></i>ARIA</span>#}
+{#                <span>{{ report.summary.total_aria|default:0 }}</span>#}
+{#            </div>#}
+{#        </div>#}
+{#        <a class="btn btn-outline-primary mt-4" href="{% url 'export_csv' %}?url={{ url }}">Export CSV</a>#}
+{#        <a class="btn btn-outline-secondary mt-2" href="{% url 'export_pdf' %}?url={{ url }}">Export PDF</a>#}
+{#    </div>#}
+{##}
+{#    <!-- Main Panel -->#}
+{#    <div class="flex-grow-1 p-4">#}
+{#        <h5>Website Preview</h5>#}
+{#        <iframe id="preview-frame"#}
+{#                src="{% url 'render_dom' %}?uid={{ scan_id }}"#}
+{#                width="100%" height="800px"#}
+{#                style="border: 1px solid #ccc;"></iframe>#}
+{##}
+{#        <!-- Tabs -->#}
+{#        <ul class="nav nav-tabs mt-5" id="reportTabs" role="tablist">#}
+{#            <li class="nav-item">#}
+{#                <a class="nav-link active" data-bs-toggle="tab" href="#details" role="tab">Details</a>#}
+{#            </li>#}
+{#            <li class="nav-item">#}
+{#                <a class="nav-link" data-bs-toggle="tab" href="#contrast" role="tab">Contrast</a>#}
+{#            </li>#}
+{#            <li class="nav-item">#}
+{#                <a class="nav-link" data-bs-toggle="tab" href="#order" role="tab">Order</a>#}
+{#            </li>#}
+{#        </ul>#}
+{##}
+{#        <div class="tab-content mt-3">#}
+{#            <div class="tab-pane fade show active" id="details">#}
+{#                <table class="table table-bordered">#}
+{#                    <thead>#}
+{#                        <tr>#}
+{#                            <th>Issue</th>#}
+{#                            <th>Element</th>#}
+{#                            <th>Suggestion</th>#}
+{#                        </tr>#}
+{#                    </thead>#}
+{#                    <tbody>#}
+{#                        {% for item in report.details %}#}
+{#                        <tr>#}
+{#                            <td>{{ item.type }}</td>#}
+{#                            <td><code>{{ item.element|truncatechars:80|safe }}</code></td>#}
+{#                            <td>{{ item.suggestion }}</td>#}
+{#                           <td style="max-width: 300px; white-space: pre-wrap; word-break: break-word;">#}
+{#                                <code>{{ item.element|safe }}</code>#}
+{#                            </td>#}
+{#                            <td style="max-width: 300px; white-space: pre-wrap; word-break: break-word;">#}
+{#                                <pre><code>{{ item.suggestion|escape }}</code></pre>#}
+{#                            </td>#}
+{#                            <td style="max-width: 300px; word-break: break-word;">#}
+{#                                <div style=" word-break: break-word; overflow-wrap: break-word; font-family: monospace;">#}
+{#                                    {{ item.suggestion|highlight_alt|safe }}#}
+{#                                </div>#}
+{#                            </td>#}
+{##}
+{#                        </tr>#}
+{#                        {% endfor %}#}
+{#                    </tbody>#}
+{#                </table>#}
+{#            </div>#}
+{#            <div class="tab-pane fade" id="contrast">#}
+{#                <p>Contrast issues will be grouped and enhanced soon.</p>#}
+{#            </div>#}
+{#            <div class="tab-pane fade" id="order">#}
+{#                <p>Tab/order flow logic will be analyzed here in future updates.</p>#}
+{#            </div>#}
+{#        </div>#}
+{#    </div>#}
+{#</div>#}
+{#{% endblock %}#}
+{% extends 'core/base.html' %}
+{% load static %}
+{% load custom_tags %}
+{% load custom_filters %}
+
+{% block content %}
+<style>
+    mark {
+      background-color: #fff3cd;
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+</style>
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- Sticky Sidebar Summary -->
+    <aside class="col-md-3">
+      <div class="position-sticky" style="top: 90px;" aria-labelledby="summaryHeading">
+        <h2 id="summaryHeading" class="h5">Accessibility Summary</h2>
+        <ul class="list-group">
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Missing Alt Text
+            <span class="badge bg-danger rounded-pill">{{ report.summary.by_type|get_item:"Missing Alt Text"|default:0 }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Color Contrast
+            <span class="badge bg-warning text-dark rounded-pill">{{ report.summary.by_type|get_item:"Low Color Contrast"|default:0 }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Improper Lists
+            <span class="badge bg-info text-dark rounded-pill">{{ report.summary.by_type|get_item:"Possible Improper List"|default:0 }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Structural Tags
+            <span class="badge bg-secondary">{{ report.summary.total_structural }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            ARIA Labels
+            <span class="badge bg-success">{{ report.summary.total_aria }}</span>
+          </li>
+        </ul>
+        <a href="{% url 'export_csv' %}?url={{ url }}" class="btn btn-primary mt-4 w-100">Export CSV</a>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <section class="col-md-9">
+      <h2 class="h5">Website Preview</h2>
+      <iframe
+          id="preview-frame"
+          src="{% url 'render_dom' %}?uid={{ scan_id }}"
+          title="Scanned Website Preview"
+          class="w-100 mb-4"
+          height="500"
+          style="border: 1px solid #ccc;"
+          aria-describedby="previewDescription"></iframe>
+      <p id="previewDescription" class="visually-hidden">
+        This iframe shows a rendered version of your website with accessibility issue markers.
+      </p>
+
+      <!-- Detected Issues -->
+      <h3 class="h5 mt-4">Detected Issues</h3>
+      <div class="accordion" id="issueAccordion">
+        {% for item in report.details %}
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="false"
+                    aria-controls="collapse{{ forloop.counter }}">
+              {{ item.type }}
+            </button>
+          </h2>
+          <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse"
+               aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#issueAccordion">
+            <div class="accordion-body">
+              <strong>Element:</strong>
+                <div class="border p-2 bg-light mb-3" role="region" tabindex="0">
+                  <div style="max-width: 300px; max-height: 200px; overflow: hidden;">
+{#                    {{ item.element|safe }}#}
+                      {{ item.element|constrain_img|safe }}
+                  </div>
+                </div>
+
+              <strong>Suggested Fix:</strong>
+{#                  <div class="bg-white border p-3 mb-3" style="white-space: pre-wrap; font-family: monospace;">#}
+{#                      {{ item.suggestion|highlight_alt|safe }}#}
+{#                  </div>#}
+                     <div style=" word-break: break-word; overflow-wrap: break-word; font-family: monospace;">
+                        {{ item.suggestion|highlight_alt|safe }}
+                    </div>
+
+                {% if item.why and item.wcag %}
+                  <strong>Why it matters:</strong>
+                  <p class="mb-2">{{ item.why|safe }}</p>
+
+                  <strong>Violated rule:</strong>
+                  <p>
+                    <a href="{{ item.wcag.url }}" target="_blank" rel="noopener">
+                      {{ item.wcag.label }}
+                    </a><br>
+                    <small>{{ item.wcag.description }}</small>
+                  </p>
+                {% endif %}
+                {% if item.ai_suggestion %}
+                  <hr>
+                  <strong>AI Suggestion:</strong>
+                  <div style="white-space: pre-wrap; word-break: break-word; font-family: monospace; background: #f9f9f9; border-left: 4px solid #0d6efd; padding: 10px; margin-top: 10px;">
+                    {{ item.ai_suggestion|highlight_alt|safe }}
+                  </div>
+                {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+
+
+
+<!-- Optional: Click element in accordion highlights preview -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const preview = document.getElementById("preview-frame");
+
+    document.querySelectorAll("[data-issue-highlight]").forEach(el => {
+      el.addEventListener("click", () => {
+        const issueHtml = el.textContent;
+        preview.contentWindow?.postMessage({ type: "highlight", html: issueHtml }, "*");
+      });
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Guidelines - Access Checker{% endblock %}
+
+{% block content %}
+<h1>Accessibility Guidelines</h1>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Code</th>
+            <th>Description</th>
+            <th>Guideline</th>
+            <th>Severity</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rule in rules %}
+        <tr>
+            <td>{{ rule.code }}</td>
+            <td>{{ rule.description }}</td>
+            <td>{{ rule.guideline }}</td>
+            <td>{{ rule.severity }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

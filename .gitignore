@@ -1,0 +1,7 @@
+snapshots/
+core/static/screenshots
+__pycache__/
+*.pyc
+*.pyo
+
+.idea

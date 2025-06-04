@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Accessibility Report</title>
+    <style>
+        body { font-family: sans-serif; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 6px; }
+    </style>
+</head>
+<body>
+    <h2>Accessibility Report for {{ url }}</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Element</th>
+                <th>Suggestion</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in report.details %}
+            <tr>
+                <td>{{ item.type }}</td>
+                <td>{{ item.element|truncatechars:100|safe }}</td>
+                <td>{{ item.suggestion }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="text-center px-3">
+  <h1 class="display-5 fw-bold">Make Online Inclusive</h1>
+  <p class="lead">Scan any URL for accessibility issues and get actionable fixes that align with WCAG, ADA, and more.</p>
+
+  <form method="get" action="{% url 'report' %}" class="needs-validation mt-4" novalidate>
+    <label for="url" class="form-label visually-hidden">Website URL</label>
+    <div class="input-group input-group-lg shadow-sm">
+      <span class="input-group-text" id="site-label">🌍</span>
+      <input type="url" name="url" id="url" class="form-control"
+             placeholder="https://example.com"
+             aria-label="Website URL to scan" aria-describedby="site-label" required>
+      <button type="submit" class="btn btn-success">Scan</button>
+    </div>
+      <!-- Loader -->
+        <div id="scan-loader" class="text-center mt-4" style="display: none;">
+          <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Scanning...</span>
+          </div>
+          <p class="mt-2">Scanning website… this might take ~10–15 seconds depending on the page size.</p>
+        </div>
+  </form>
+</div>
+
+<script>
+  document.querySelector('form').addEventListener('submit', function () {
+    document.getElementById('scan-loader').style.display = 'block';
+  });
+
+  document.querySelector('form').addEventListener('submit', function () {
+  document.getElementById('scan-loader').style.display = 'block';
+  this.querySelector('button[type="submit"]').disabled = true;
+});
+</script>
+
+{% endblock %}
