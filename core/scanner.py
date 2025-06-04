@@ -26,27 +26,51 @@ from django.conf import settings
 
 def fetch_html(url):
     from playwright.sync_api import sync_playwright
+    import sys
+    import io
+
+    # Patch sys.stderr for Gunicorn compatibility
+    if not hasattr(sys.stderr, "fileno"):
+        sys.stderr = io.StringIO()
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-extensions",
+                    "--disable-gpu",
+                    "--disable-software-rasterizer",
+                    "--disable-web-security"
+                ]
+            )
+
             context = browser.new_context(
                 java_script_enabled=True,
                 ignore_https_errors=True,
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
             )
+
             page = context.new_page()
 
+            # Inject bot evasion script
             page.add_init_script("""
                 Object.defineProperty(navigator, 'webdriver', { get: () => false });
             """)
 
-            page.on("console", lambda msg: print(f"[Console] {msg.type}: {msg.text}"))
+            # 🔍 Logging handlers
+            page.on("console", lambda msg: print(f"[Console] {msg.type.upper()}: {msg.text}"))
+            page.on("requestfailed", lambda req: print(f"[Request FAILED] {req.url}"))
+            page.on("pageerror", lambda err: print(f"[Page ERROR] {err}"))
 
+            print(f"[INFO] Visiting {url}")
             page.goto(url, wait_until="networkidle")
             page.wait_for_timeout(8000)
 
-            # 🧠 Re-evaluate inline scripts manually
+            # Optional re-evaluation of inline scripts
             page.evaluate("""
                 document.querySelectorAll('script').forEach(s => {
                     if (s.innerText.includes('popupclick') || s.innerText.includes('countdown')) {
@@ -56,7 +80,6 @@ def fetch_html(url):
                 });
             """)
 
-            # Force modal timer
             page.evaluate("""
                 try {
                     if (typeof countdown === 'function') {
@@ -68,10 +91,11 @@ def fetch_html(url):
                 }
             """)
 
-            # page.wait_for_timeout(3000)
-
             html = page.evaluate("document.documentElement.outerHTML")
-            page.screenshot(path="page.png", full_page=True)
+
+            # 📸 Save screenshot for verification
+            page.screenshot(path="/tmp/page.png", full_page=True)
+
             browser.close()
             return html
 
