@@ -11,7 +11,7 @@ import os
 import os
 import sys
 import io
-from django.core.wsgi import get_wsgi_application
+# from django.core.wsgi import get_wsgi_application
 
 # os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'accessTool.settings')
 #
@@ -23,5 +23,5 @@ if not hasattr(sys.stderr, "fileno"):
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'accessTool.settings')
 
-# from django.core.wsgi import get_wsgi_application
+from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
