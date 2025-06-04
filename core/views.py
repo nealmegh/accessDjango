@@ -14,6 +14,8 @@ import urllib3
 import os
 import uuid
 from django.conf import settings
+import subprocess
+import json
 # from weasyprint import HTML
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -57,6 +59,20 @@ def render_dom(request):
     response = HttpResponse(html, content_type="text/html")
     response["X-Frame-Options"] = "ALLOWALL"
     return response
+
+def fetch_html_safely(url):
+    try:
+        result = subprocess.run(
+            ["python", "core/playwright_worker.py", url],
+            capture_output=True,
+            timeout=40
+        )
+        output = result.stdout.decode("utf-8")
+        data = json.loads(output)
+        return data["html"]
+    except Exception as e:
+        print(f"[Subprocess Error] {e}")
+        return None
 
 def report(request):
     url = request.GET.get("url")
